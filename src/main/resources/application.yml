@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: messaging-auth-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:auth_db}
+    username: ${DB_USER:auth_service}
+    password: ${DB_PASSWORD:auth_service_pw}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: public
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    transport-protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+      mail.smtp.from: ${MAIL_FROM:}
+
+server:
+  port: 8081
+
+badrlink:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8082}
+  security:
+    internal-token: ${INTERNAL_HMAC_SECRET}
+    jwt:
+      hmac-secret: ${JWT_HMAC_SECRET}
+      access-token-ttl: ${JWT_ACCESS_TTL}
+      refresh-token-ttl: ${JWT_REFRESH_TTL}
+      issuer: ${JWT_ISSUER:messaging-auth-service}
+    lockout:
+      max-failed-attempts: ${LOCKOUT_MAX_ATTEMPTS}
+      duration: ${LOCKOUT_DURATION}
+    password-reset:
+      token-ttl: ${PASSWORD_RESET_TTL:PT15M}
+    email:
+      from: ${MAIL_FROM:}
+      reset-cooldown: ${MAIL_RESET_COOLDOWN:PT2M}
+      hourly-limit: ${MAIL_HOURLY_LIMIT:20}
+      failure-threshold: ${MAIL_FAILURE_THRESHOLD:3}
+      failure-cooldown: ${MAIL_FAILURE_COOLDOWN:PT5M}
+
+
