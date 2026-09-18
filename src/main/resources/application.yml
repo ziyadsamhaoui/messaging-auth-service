@@ -59,5 +59,3 @@ badrlink:
       hourly-limit: ${MAIL_HOURLY_LIMIT:20}
       failure-threshold: ${MAIL_FAILURE_THRESHOLD:3}
       failure-cooldown: ${MAIL_FAILURE_COOLDOWN:PT5M}
-
-
