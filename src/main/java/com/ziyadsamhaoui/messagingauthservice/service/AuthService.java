@@ -76,7 +76,8 @@ public class AuthService {
         return id;
     }
 
-    @Transactional
+    // No @Transactional: the failed-attempt counter must be committed even though
+    // the login itself is rejected with InvalidCredentialsException.
     public TokenPair login(LoginRequest request) {
         Instant now = Instant.now();
         Credential credential = credentialRepository.findByEmailIgnoreCase(request.email())
@@ -89,12 +90,14 @@ public class AuthService {
         }
         if (!passwordEncoder.matches(request.password(), credential.getPasswordHash())) {
             credential.registerFailedAttempt(now, now.plus(properties.lockout().duration()));
+            credentialRepository.saveAndFlush(credential);
             if (credential.isLocked()) {
                 log.warn("account locked for user {} until {}", credential.getId(), credential.getLockoutEnd());
             }
             throw new InvalidCredentialsException();
         }
         credential.registerSuccessfulLogin();
+        credentialRepository.saveAndFlush(credential);
         return issueTokenPair(credential, now);
     }
 

@@ -42,7 +42,7 @@ public abstract class IntegrationTest {
 
     @BeforeEach
     void resetMailSender() {
-        mailSender.succeed();
+        mailSender.reset();
     }
 
     @BeforeEach
@@ -84,10 +84,15 @@ public abstract class IntegrationTest {
     }
 
     protected String fetchLatestResetTokenRaw() {
-        String tokenHash = jdbcTemplate.queryForObject(
-                "select token_hash from password_reset_tokens order by id desc limit 1", String.class);
-        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(
-                java.util.HexFormat.of().parseHex(tokenHash.trim()));
+        String body = mailSender.lastSentBody()
+                .orElseThrow(() -> new IllegalStateException("no reset email was sent"));
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("token=([A-Za-z0-9_-]+)")
+                .matcher(body);
+        if (!matcher.find()) {
+            throw new IllegalStateException("reset link not found in email body: " + body);
+        }
+        return matcher.group(1);
     }
 
     private static RestTemplate passThroughRestTemplate() {

@@ -7,12 +7,14 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 import jakarta.mail.Session;
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestMailSender implements JavaMailSender {
 
     private final AtomicInteger sent = new AtomicInteger();
     private volatile boolean failing;
+    private volatile String lastBody;
 
     @Override
     public MimeMessage createMimeMessage() {
@@ -29,7 +31,17 @@ public class TestMailSender implements JavaMailSender {
         if (failing) {
             throw new MailSendException("smtp unavailable");
         }
+        lastBody = extractBody(mimeMessage);
         sent.incrementAndGet();
+    }
+
+    private static String extractBody(MimeMessage mimeMessage) {
+        try {
+            Object content = mimeMessage.getContent();
+            return content != null ? content.toString() : null;
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @Override
@@ -55,6 +67,16 @@ public class TestMailSender implements JavaMailSender {
 
     public void succeed() {
         failing = false;
+    }
+
+    public Optional<String> lastSentBody() {
+        return Optional.ofNullable(lastBody);
+    }
+
+    public void reset() {
+        sent.set(0);
+        failing = false;
+        lastBody = null;
     }
 
     public int sentCount() {

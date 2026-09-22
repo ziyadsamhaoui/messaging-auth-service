@@ -32,12 +32,17 @@ public class PasswordResetService {
     private final ResetEmailRateLimiter resetEmailRateLimiter;
     private final ResetEmailSender resetEmailSender;
 
-    @Transactional
+    // Deliberately NOT @Transactional: the token insert must commit regardless of the
+    // SMTP outcome (mail outages are transient, tokens are reusable), while the
+    // EmailDeliveryException still propagates so the API surfaces a 502. markSent is
+    // skipped on failure, so a failed attempt never consumes the resend cooldown.
     public void forgotPassword(String email) {
         Optional<Credential> credential = credentialRepository.findByEmailIgnoreCase(email);
         if (credential.isEmpty()) {
             return;
         }
+        // Reject before consuming quota or persisting anything when delivery is unavailable.
+        resetEmailSender.assertAvailable();
         resetEmailRateLimiter.consumeSlot(email);
         String rawToken = generateRawToken();
         PasswordResetToken token = PasswordResetToken.builder()

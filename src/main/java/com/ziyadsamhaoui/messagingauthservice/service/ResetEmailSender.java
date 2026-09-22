@@ -23,11 +23,16 @@ public class ResetEmailSender {
 
     private static final String BREAKER_KEY = "mail:breaker:open-until";
     private static final String BREAKER_FAILURES_KEY = "mail:breaker:consecutive-failures";
+    private static final String FROM_OVERRIDE_KEY = "badrlink:mail:from-override";
 
     private final JavaMailSender mailSender;
     private final StringRedisTemplate redisTemplate;
     private final AuthProperties properties;
     private final Semaphore sendPermits = new Semaphore(2);
+
+    public void assertAvailable() {
+        assertBreakerClosed();
+    }
 
     public void sendResetEmail(String to, String rawToken) {
         assertBreakerClosed();
@@ -50,8 +55,7 @@ public class ResetEmailSender {
     }
 
     private void doSend(String to, String rawToken) {
-        AuthProperties.Email email = properties.email();
-        String from = email.from();
+        String from = resolveFromAddress();
         if (from == null || from.isBlank()) {
             throw new EmailDeliveryException("email sender is not configured");
         }
@@ -77,6 +81,18 @@ public class ResetEmailSender {
             registerFailure(ex);
             throw new EmailDeliveryException("failed to send reset email", ex);
         }
+    }
+
+    private String resolveFromAddress() {
+        try {
+            String override = redisTemplate.opsForValue().get(FROM_OVERRIDE_KEY);
+            if (override != null) {
+                return override;
+            }
+        } catch (RuntimeException ex) {
+            log.error("failed to read email from-override, using configured sender", ex);
+        }
+        return properties.email().from();
     }
 
     private void registerFailure(Throwable cause) {

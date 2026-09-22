@@ -17,7 +17,7 @@ CREATE INDEX idx_credentials_email ON credentials (email);
 CREATE TABLE refresh_tokens (
     id          BIGSERIAL PRIMARY KEY,
     user_id     UUID NOT NULL,
-    token_hash  CHAR(64) NOT NULL,
+    token_hash  VARCHAR(64) NOT NULL,
     is_expired  BOOLEAN NOT NULL DEFAULT FALSE,
     is_revoked  BOOLEAN NOT NULL DEFAULT FALSE,
     expiry_date TIMESTAMPTZ NOT NULL,
@@ -30,7 +30,7 @@ CREATE INDEX idx_refresh_tokens_user_id_token_hash ON refresh_tokens (user_id, t
 CREATE TABLE password_reset_tokens (
     id          BIGSERIAL PRIMARY KEY,
     user_id     UUID NOT NULL,
-    token_hash  CHAR(64) NOT NULL,
+    token_hash  VARCHAR(64) NOT NULL,
     is_used     BOOLEAN NOT NULL DEFAULT FALSE,
     is_expired  BOOLEAN NOT NULL DEFAULT FALSE,
     expiry_date TIMESTAMPTZ NOT NULL,
