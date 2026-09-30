@@ -41,6 +41,13 @@ server:
   port: 8081
 
 badrlink:
+  kafka:
+    enabled: ${KAFKA_ENABLED:true}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    outbox:
+      relay-interval: ${KAFKA_RELAY_INTERVAL:500ms}
+      batch-size: ${KAFKA_RELAY_BATCH:100}
+      topic: badrlink.auth.credential.v1
   user-service:
     url: ${USER_SERVICE_URL:http://localhost:8082}
   security:
