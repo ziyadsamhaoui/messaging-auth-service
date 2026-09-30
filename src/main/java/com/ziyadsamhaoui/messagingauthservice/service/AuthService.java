@@ -15,6 +15,9 @@ import com.ziyadsamhaoui.messagingauthservice.exception.InvalidTokenException;
 import com.ziyadsamhaoui.messagingauthservice.model.Credential;
 import com.ziyadsamhaoui.messagingauthservice.model.RefreshToken;
 import com.ziyadsamhaoui.messagingauthservice.model.Role;
+import com.ziyadsamhaoui.messagingauthservice.outbox.CredentialEvents;
+import com.ziyadsamhaoui.messagingauthservice.outbox.OutboxPublisher;
+import com.ziyadsamhaoui.messagingauthservice.outbox.TransactionalOutboxPublisher;
 import com.ziyadsamhaoui.messagingauthservice.repository.CredentialRepository;
 import com.ziyadsamhaoui.messagingauthservice.repository.RefreshTokenRepository;
 import com.ziyadsamhaoui.messagingauthservice.security.JwtTokenProvider;
@@ -46,6 +49,8 @@ public class AuthService {
     private final JwtDenylistService jwtDenylistService;
     private final UserClient userClient;
     private final AuthProperties properties;
+    private final OutboxPublisher outboxPublisher;
+    private final CredentialLockService credentialLockService;
 
     @Transactional
     public UUID register(RegisterRequest request) {
@@ -73,6 +78,13 @@ public class AuthService {
             log.warn("registration rolled back for {}: {}", request.email(), ex.getMessage());
             throw ex;
         }
+        // Sprint 6 §2.1: outbox row in the SAME transaction as the insert — appended
+        // after the synchronous User call succeeded so a compensated registration
+        // never leaves an orphan CREDENTIAL_REGISTERED behind. Additive to the sync
+        // call, not a replacement for it (dual path, §2.1).
+        outboxPublisher.publish(TransactionalOutboxPublisher.AGGREGATE_TYPE, id.toString(),
+                CredentialEvents.CREDENTIAL_REGISTERED, new CredentialEvents.CredentialRegistered(
+                        id, request.username(), request.email(), credential.getCreatedAt()));
         return id;
     }
 
@@ -86,14 +98,14 @@ public class AuthService {
             throw new AccountLockedException(credential.getLockoutEnd());
         }
         if (credential.isLocked()) {
-            credential.unlock();
+            // Lock window elapsed: auto-unlock before evaluating credentials, exactly as
+            // before — but now the flip commits with a CREDENTIAL_UNLOCKED outbox row.
+            credentialLockService.persistUnlock(credential);
         }
         if (!passwordEncoder.matches(request.password(), credential.getPasswordHash())) {
-            credential.registerFailedAttempt(now, now.plus(properties.lockout().duration()));
-            credentialRepository.saveAndFlush(credential);
-            if (credential.isLocked()) {
-                log.warn("account locked for user {} until {}", credential.getId(), credential.getLockoutEnd());
-            }
+            // Counter update + (on the threshold) CREDENTIAL_LOCKED row commit in one
+            // transaction via CredentialLockService; login itself still returns 401.
+            credentialLockService.persistFailedAttempt(credential, now, properties.lockout().duration());
             throw new InvalidCredentialsException();
         }
         credential.registerSuccessfulLogin();

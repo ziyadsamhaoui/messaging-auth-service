@@ -6,6 +6,9 @@ import com.ziyadsamhaoui.messagingauthservice.dto.AuthRequests.ResetPasswordRequ
 import com.ziyadsamhaoui.messagingauthservice.exception.InvalidTokenException;
 import com.ziyadsamhaoui.messagingauthservice.model.Credential;
 import com.ziyadsamhaoui.messagingauthservice.model.PasswordResetToken;
+import com.ziyadsamhaoui.messagingauthservice.outbox.CredentialEvents;
+import com.ziyadsamhaoui.messagingauthservice.outbox.OutboxPublisher;
+import com.ziyadsamhaoui.messagingauthservice.outbox.TransactionalOutboxPublisher;
 import com.ziyadsamhaoui.messagingauthservice.repository.CredentialRepository;
 import com.ziyadsamhaoui.messagingauthservice.repository.PasswordResetTokenRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class PasswordResetService {
     private final AuthProperties properties;
     private final ResetEmailRateLimiter resetEmailRateLimiter;
     private final ResetEmailSender resetEmailSender;
+    private final OutboxPublisher outboxPublisher;
 
     // Deliberately NOT @Transactional: the token insert must commit regardless of the
     // SMTP outcome (mail outages are transient, tokens are reusable), while the
@@ -74,6 +78,10 @@ public class PasswordResetService {
         credential.changePassword(passwordEncoder.encode(request.newPassword()));
         token.markUsed();
         resetTokenRepository.invalidateAllForUser(token.getUserId());
+        // Sprint 6 §2.1: same transaction as the password write. No password data in the payload.
+        outboxPublisher.publish(TransactionalOutboxPublisher.AGGREGATE_TYPE, credential.getId().toString(),
+                CredentialEvents.CREDENTIAL_PASSWORD_CHANGED, new CredentialEvents.CredentialPasswordChanged(
+                        credential.getId(), now));
     }
 
     private String generateRawToken() {
