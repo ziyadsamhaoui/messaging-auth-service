@@ -11,12 +11,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
-/**
- * Sprint 6 §3.1 — propagates the Gateway's X-Correlation-Id (already sent
- * end-to-end per the Gateway architecture doc) into {@link CorrelationContext}
- * and the MDC, so outbox rows and log lines carry the same id as the HTTP
- * request that caused them.
- */
+
 @Component
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
