@@ -25,8 +25,7 @@ This service owns:
 * Logout and JWT denylisting
 * Password reset and recovery
 * Authentication roles (`USER` / `ADMIN`)
-
-It **does not store** public profiles, blocks, connections, or other user profile data.
+It **does not store** public profiles, blocks, connections, or other user profile data. It also does not store usernames beyond the one carried in the registration event (User owns usernames — see `docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-06).
 
 ---
 
@@ -62,6 +61,8 @@ The Auth Service is responsible for authentication within BadrLink and communica
 
 The service owns its own database and does not share entities or credentials with other services.
 
+Centralized references: [`/docs/API_ENDPOINTS.md`](../docs/API_ENDPOINTS.md), [`/docs/EVENTS.md`](../docs/EVENTS.md), [`/docs/adr/`](../docs/adr/0000-index.md), [`/docs/INCOHERENCES_AND_RESOLUTIONS.md`](../docs/INCOHERENCES_AND_RESOLUTIONS.md).
+
 ---
 
 ## API
@@ -85,7 +86,7 @@ Internal endpoints are protected with an `X-Internal-Token` and are intended for
 PATCH /internal/credentials/{id}/role
 ```
 
-Used by the User Service to synchronize a user's role.
+Used by the User Service to synchronize a user's role. Auth has no username-change endpoint: the username is originated once at registration and User owns it afterwards (see `/docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-06).
 
 ---
 
@@ -110,6 +111,8 @@ Login
 Access tokens contain the user's UUID, role, and a unique token identifier (`jti`).
 
 Refresh and password reset tokens are stored only as SHA-256 hashes.
+
+> **Known gap:** tokens are signed HS256 with a shared secret and no JWKS endpoint is exposed yet, while the Gateway and resource services are configured for JWKS verification. Until the RS256/JWKS work lands, every service in one deployment must share `JWT_HMAC_SECRET`. See `/docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-02/INC-07.
 
 ---
 
@@ -136,7 +139,6 @@ The service currently manages three main entities:
 ```text
 Credential
  ├── Email
- ├── Username
  ├── Password hash
  └── Role
 
@@ -151,7 +153,7 @@ PasswordResetToken
  └── Usage state
 ```
 
-Authentication credentials are intentionally kept separate from the public profile data managed by the User Service.
+The username is **not** stored here — the `credentials` table has no username column. Auth originates the username once, at registration (request body + `CREDENTIAL_REGISTERED` payload), and the User service owns it afterwards (see `/docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-06).
 
 ---
 
@@ -185,6 +187,7 @@ This starts:
 
 * PostgreSQL on `5432`
 * Redis on `6379`
+* Kafka (KRaft) on `9092` — one service's compose starts the shared broker; the User and Chat services must not start their own
 
 ### Run the service
 
@@ -208,6 +211,12 @@ Integration tests use **Testcontainers**, so Docker must be running.
 
 ---
 
+## Events
+
+Published to `badrlink.auth.credential.v1` via the transactional outbox: `CREDENTIAL_REGISTERED` (dual-path with the synchronous profile-creation call), `CREDENTIAL_LOCKED`, `CREDENTIAL_UNLOCKED`, `CREDENTIAL_PASSWORD_CHANGED`. Consumer: the User service (registration replay). Catalog: `docs/EVENTS.md`; decision record: [`/docs/adr/0006`](../docs/adr/0006-auth-credential-outbox-events.md).
+
+---
+
 ## Project Structure
 
 ```text
@@ -215,10 +224,14 @@ src/
 ├── main/
 │   ├── java/
 │   │   └── com/ziyadsamhaoui/messagingauthservice/
-│   │       ├── auth/
-│   │       ├── credential/
-│   │       ├── token/
-│   │       ├── password/
+│   │       ├── client/
+│   │       ├── controller/
+│   │       ├── model/
+│   │       ├── dto/
+│   │       ├── outbox/
+│   │       ├── repository/
+│   │       ├── service/
+│   │       ├── web/
 │   │       └── security/
 │   └── resources/
 │       ├── db/migration/
