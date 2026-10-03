@@ -1,11 +1,12 @@
 # BadrLink - Auth Service
 
-**The authentication and credential service powering BadrLink, built with Java, Spring Boot, PostgreSQL, Redis, and JWT.**
+**The authentication and credential service powering BadrLink, built with Java, Spring Boot, PostgreSQL, Redis, Kafka and Spring Security.**
 
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.1.1-6DB33F?style=flat-square\&logo=springboot\&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square\&logo=openjdk\&logoColor=white)](https://www.oracle.com/java/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square\&logo=postgresql\&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square\&logo=redis\&logoColor=white)](https://redis.io/)
+[![Kafka](https://img.shields.io/badge/Kafka-4.1.1-231F20?style=flat-square\&logo=apachekafka\&logoColor=white)](https://kafka.apache.org/)
 [![Flyway](https://img.shields.io/badge/Flyway-Migrations-CC0200?style=flat-square\&logo=flyway\&logoColor=white)](https://documentation.red-gate.com/flyway)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square\&logo=docker\&logoColor=white)](https://www.docker.com/)
 [![Maven](https://img.shields.io/badge/Maven-Build-C71A36?style=flat-square\&logo=apachemaven\&logoColor=white)](https://maven.apache.org/)
@@ -25,7 +26,7 @@ This service owns:
 * Logout and JWT denylisting
 * Password reset and recovery
 * Authentication roles (`USER` / `ADMIN`)
-It **does not store** public profiles, blocks, connections, or other user profile data. It also does not store usernames beyond the one carried in the registration event (User owns usernames — see `docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-06).
+It **does not store** public profiles, blocks, connections, or other user profile data.
 
 ---
 
@@ -206,12 +207,6 @@ http://localhost:8081
 ```
 
 Integration tests use **Testcontainers**, so Docker must be running.
-
----
-
-## Events
-
-Published to `badrlink.auth.credential.v1` via the transactional outbox: `CREDENTIAL_REGISTERED` (dual-path with the synchronous profile-creation call), `CREDENTIAL_LOCKED`, `CREDENTIAL_UNLOCKED`, `CREDENTIAL_PASSWORD_CHANGED`. Consumer: the User service (registration replay). Catalog: `docs/EVENTS.md`; decision record: [`/docs/adr/0006`](../docs/adr/0006-auth-credential-outbox-events.md).
 
 ---
 
