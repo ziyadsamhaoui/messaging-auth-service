@@ -76,7 +76,7 @@ class OutboxFlowTest {
     @BeforeEach
     void setUp() {
         AuthProperties properties = new AuthProperties(
-                new AuthProperties.Jwt("secret", "issuer", Duration.ofMinutes(15), Duration.ofDays(7)),
+                new AuthProperties.Jwt("issuer", "messaging-api", null, Duration.ofMinutes(15), Duration.ofDays(7)),
                 new AuthProperties.Lockout(5, Duration.ofMinutes(15)),
                 new AuthProperties.PasswordReset(Duration.ofHours(1)),
                 new AuthProperties.Email(null, Duration.ofMinutes(2), 20, 3, Duration.ofMinutes(5)));
