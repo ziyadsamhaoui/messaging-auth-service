@@ -9,7 +9,7 @@ public record AuthProperties(Jwt jwt, Lockout lockout, PasswordReset passwordRes
 
     public AuthProperties {
         if (jwt == null) {
-            jwt = new Jwt(null, null, null, null);
+            jwt = new Jwt(null, null, null, null, null);
         }
         if (lockout == null) {
             lockout = new Lockout(5, Duration.ofMinutes(15));
@@ -22,7 +22,7 @@ public record AuthProperties(Jwt jwt, Lockout lockout, PasswordReset passwordRes
         }
     }
 
-    public record Jwt(String hmacSecret, String issuer, Duration accessTokenTtl, Duration refreshTokenTtl) {
+    public record Jwt(String issuer, String audience, String keyId, Duration accessTokenTtl, Duration refreshTokenTtl) {
     }
 
     public record Lockout(int maxFailedAttempts, Duration duration) {

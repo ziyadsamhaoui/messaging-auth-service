@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/oauth2/jwks").permitAll()
                         .requestMatchers("/internal/**").permitAll()
                         .anyRequest().denyAll())
                 .addFilterBefore(internalAuthFilter, UsernamePasswordAuthenticationFilter.class);

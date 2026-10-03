@@ -108,11 +108,9 @@ Login
                      Revocation
 ```
 
-Access tokens contain the user's UUID, role, and a unique token identifier (`jti`).
+Access tokens are signed with **RS256** using an RSA 2048-bit key pair; the JWT header carries a `kid` and the payload carries the user's UUID, role, an `aud` claim (`messaging-api` by default), and a unique token identifier (`jti`). The public key is published as a JWK Set at `GET /oauth2/jwks`. Refresh and password reset tokens are stored only as SHA-256 hashes.
 
-Refresh and password reset tokens are stored only as SHA-256 hashes.
-
-> **Known gap:** tokens are signed HS256 with a shared secret and no JWKS endpoint is exposed yet, while the Gateway and resource services are configured for JWKS verification. Until the RS256/JWKS work lands, every service in one deployment must share `JWT_HMAC_SECRET`. See `/docs/INCOHERENCES_AND_RESOLUTIONS.md` INC-02/INC-07.
+> **Key management:** the signing key is generated at instance start with a thumbprint-derived `kid` (override with `JWT_RSA_KEY_ID`). Durable key storage and rotation are the remaining INC-02 backlog item. See `docs/adr/0010-rs256-access-token-signing.md` and `0011-canonical-jwks-path.md`.
 
 ---
 

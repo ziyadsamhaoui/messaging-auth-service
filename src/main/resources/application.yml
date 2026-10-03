@@ -53,10 +53,11 @@ badrlink:
   security:
     internal-token: ${INTERNAL_HMAC_SECRET}
     jwt:
-      hmac-secret: ${JWT_HMAC_SECRET}
       access-token-ttl: ${JWT_ACCESS_TTL}
       refresh-token-ttl: ${JWT_REFRESH_TTL}
-      issuer: ${JWT_ISSUER:messaging-auth-service}
+      issuer: ${JWT_ISSUER:http://messaging-auth-service:8081}
+      audience: ${JWT_AUDIENCE:messaging-api}
+      key-id: ${JWT_RSA_KEY_ID:}
     lockout:
       max-failed-attempts: ${LOCKOUT_MAX_ATTEMPTS}
       duration: ${LOCKOUT_DURATION}
