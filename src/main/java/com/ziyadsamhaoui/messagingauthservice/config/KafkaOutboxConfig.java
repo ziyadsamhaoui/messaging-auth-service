@@ -1,7 +1,6 @@
 package com.ziyadsamhaoui.messagingauthservice.config;
 
 import com.ziyadsamhaoui.messagingauthservice.outbox.OutboxEventRepository;
-import com.ziyadsamhaoui.messagingauthservice.outbox.OutboxPublisher;
 import com.ziyadsamhaoui.messagingauthservice.outbox.OutboxRelay;
 import com.ziyadsamhaoui.messagingauthservice.outbox.TransactionalOutboxPublisher;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -17,6 +16,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.Map;
@@ -40,11 +40,12 @@ public class KafkaOutboxConfig {
     @Bean
     OutboxRelay outboxRelay(OutboxEventRepository outboxEventRepository,
                             @Qualifier("outboxKafkaTemplate") KafkaTemplate<String, String> outboxKafkaTemplate,
-                            OutboxPublisher outboxPublisher,
                             ObjectMapper objectMapper,
-                            @Value("${badrlink.kafka.outbox.batch-size:100}") int batchSize,
+                            TransactionTemplate transactionTemplate,
+                            @Value("${badrlink.kafka.outbox.batch-size:50}") int batchSize,
+                            @Value("${badrlink.kafka.outbox.max-attempts:5}") int maxAttempts,
                             @Value("${badrlink.kafka.outbox.topic:" + TransactionalOutboxPublisher.TOPIC + "}") String topic) {
-        return new OutboxRelay(outboxEventRepository, outboxKafkaTemplate, outboxPublisher,
-                objectMapper, batchSize, topic);
+        return new OutboxRelay(outboxEventRepository, outboxKafkaTemplate, objectMapper,
+                transactionTemplate, batchSize, maxAttempts, topic);
     }
 }

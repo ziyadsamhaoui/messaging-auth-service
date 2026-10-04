@@ -46,7 +46,8 @@ badrlink:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     outbox:
       relay-interval: ${KAFKA_RELAY_INTERVAL:500ms}
-      batch-size: ${KAFKA_RELAY_BATCH:100}
+      batch-size: ${KAFKA_RELAY_BATCH:50}
+      max-attempts: ${KAFKA_OUTBOX_MAX_ATTEMPTS:5}
       topic: badrlink.auth.credential.v1
   user-service:
     url: ${USER_SERVICE_URL:http://localhost:8082}
