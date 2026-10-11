@@ -56,7 +56,7 @@ badrlink:
     jwt:
       access-token-ttl: ${JWT_ACCESS_TTL}
       refresh-token-ttl: ${JWT_REFRESH_TTL}
-      issuer: ${JWT_ISSUER:http://messaging-auth-service:8081}
+      issuer: ${JWT_ISSUER:http://localhost:8081}
       audience: ${JWT_AUDIENCE:messaging-api}
       key-id: ${JWT_RSA_KEY_ID:}
     lockout:
