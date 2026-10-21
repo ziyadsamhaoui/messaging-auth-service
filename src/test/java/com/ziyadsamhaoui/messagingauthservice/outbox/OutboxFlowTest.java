@@ -42,12 +42,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Sprint 6 §3.5 (pure unit variant, no Docker): proves the same-transaction rule
- * is wired correctly — every domain write that should produce an event appends an
- * outbox row via the MANDATORY publisher inside the service transaction, and none
- * is appended where no domain write happens.
- */
 @ExtendWith(MockitoExtension.class)
 class OutboxFlowTest {
 
@@ -115,7 +109,6 @@ class OutboxFlowTest {
         assertThat(registered.username()).isEqualTo("newuser");
         assertThat(registered.email()).isEqualTo("new@example.com");
         assertThat(registered.createdAt()).isNotNull();
-        // Sync call still happens (dual path, additive — not replaced by the event).
         verify(userClient).createUser(any(CreateUserRequest.class));
     }
 
@@ -129,7 +122,6 @@ class OutboxFlowTest {
         try {
             authService.register(new RegisterRequest("fail@example.com", "failuser", "SecurePassword123!"));
         } catch (RuntimeException expected) {
-            // propagating failure
         }
 
         verify(outboxPublisher, never()).publish(any(), any(), any(), any());
@@ -151,7 +143,6 @@ class OutboxFlowTest {
         try {
             authService.login(new LoginRequest("lock@example.com", "WrongPassword1!"));
         } catch (RuntimeException expected) {
-            // 401 path
         }
 
         ArgumentCaptor<String> type = ArgumentCaptor.forClass(String.class);
@@ -177,7 +168,6 @@ class OutboxFlowTest {
         try {
             authService.login(new LoginRequest("under@example.com", "WrongPassword1!"));
         } catch (RuntimeException expected) {
-            // 401 path
         }
 
         verify(outboxPublisher, never()).publish(any(), any(), any(), any());

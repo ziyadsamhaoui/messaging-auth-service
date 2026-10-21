@@ -6,7 +6,6 @@ target/
 /docs/
 logs
 
-### STS ###
 .apt_generated
 .classpath
 .factorypath
@@ -15,14 +14,12 @@ logs
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
 .junie
 
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -32,8 +29,6 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
 .vscode/
 
-### OS files ###
 .DS_Store

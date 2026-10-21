@@ -78,18 +78,12 @@ public class AuthService {
             log.warn("registration rolled back for {}: {}", request.email(), ex.getMessage());
             throw ex;
         }
-        // Sprint 6 §2.1: outbox row in the SAME transaction as the insert — appended
-        // after the synchronous User call succeeded so a compensated registration
-        // never leaves an orphan CREDENTIAL_REGISTERED behind. Additive to the sync
-        // call, not a replacement for it (dual path, §2.1).
         outboxPublisher.publish(TransactionalOutboxPublisher.AGGREGATE_TYPE, id.toString(),
                 CredentialEvents.CREDENTIAL_REGISTERED, new CredentialEvents.CredentialRegistered(
                         id, request.username(), request.email(), credential.getCreatedAt()));
         return id;
     }
 
-    // No @Transactional: the failed-attempt counter must be committed even though
-    // the login itself is rejected with InvalidCredentialsException.
     public TokenPair login(LoginRequest request) {
         Instant now = Instant.now();
         Credential credential = credentialRepository.findByEmailIgnoreCase(request.email())
@@ -98,13 +92,9 @@ public class AuthService {
             throw new AccountLockedException(credential.getLockoutEnd());
         }
         if (credential.isLocked()) {
-            // Lock window elapsed: auto-unlock before evaluating credentials, exactly as
-            // before — but now the flip commits with a CREDENTIAL_UNLOCKED outbox row.
             credentialLockService.persistUnlock(credential);
         }
         if (!passwordEncoder.matches(request.password(), credential.getPasswordHash())) {
-            // Counter update + (on the threshold) CREDENTIAL_LOCKED row commit in one
-            // transaction via CredentialLockService; login itself still returns 401.
             credentialLockService.persistFailedAttempt(credential, now, properties.lockout().duration());
             throw new InvalidCredentialsException();
         }
