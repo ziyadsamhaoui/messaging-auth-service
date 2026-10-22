@@ -1,0 +1,13 @@
+# Keep build output, local secrets and IDE noise out of the build context.
+target/
+logs/
+.git/
+.gitignore
+.env
+.idea/
+.junie/
+docs/
+*.log
+hs_err_pid*.log
+Dockerfile
+.dockerignore
