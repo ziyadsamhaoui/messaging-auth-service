@@ -142,6 +142,18 @@ public class AuthService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public CurrentUser currentUser(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new InvalidTokenException("missing access token");
+        }
+        JWTClaimsSet claims = jwtTokenProvider.parseAndVerify(accessToken);
+        UUID userId = UUID.fromString(claims.getSubject());
+        Credential credential = credentialRepository.findById(userId)
+                .orElseThrow(InvalidCredentialsException::new);
+        return new CurrentUser(credential.getId(), credential.getEmail());
+    }
+
     private TokenPair issueTokenPair(Credential credential, Instant now) {
         String accessToken = jwtTokenProvider.issueAccessToken(credential.getId(), credential.getRole());
         String refreshToken = generateRawToken();
@@ -163,5 +175,8 @@ public class AuthService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public record TokenPair(String accessToken, String refreshToken) {
+    }
+
+    public record CurrentUser(UUID id, String email) {
     }
 }
