@@ -20,6 +20,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # Spring Kafka reads spring.kafka.*, not badrlink.kafka.*. Without this the consumer
+  # and producer fell back to localhost:9092 inside the container and never reached the
+  # broker, which also made the outbox metrics and traces meaningless over Kafka.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -42,6 +47,28 @@ spring:
 
 server:
   port: 8081
+
+# Actuator is served on its own port: Prometheus scrapes it over the Docker network,
+# while the application port keeps the existing security configuration untouched.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9090}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      # Readiness covers the stores Auth cannot serve without; liveness stays on readinessState.
+      group:
+        readiness:
+          include: readinessState,db,redis
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 badrlink:
   kafka:
@@ -73,3 +100,18 @@ badrlink:
       hourly-limit: ${MAIL_HOURLY_LIMIT:20}
       failure-threshold: ${MAIL_FAILURE_THRESHOLD:3}
       failure-cooldown: ${MAIL_FAILURE_COOLDOWN:PT5M}
+  observability:
+    outbox:
+      refresh-interval: ${OUTBOX_METRICS_INTERVAL:15s}
+
+# Structured JSON logs. The OpenTelemetry agent puts trace_id/span_id into the MDC, and
+# Boot's logstash format writes the MDC into the JSON object, so no custom encoder is
+# needed and the trace context also survives Kafka consumer threads.
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      context:
+        include: true
+        prefix: ""
