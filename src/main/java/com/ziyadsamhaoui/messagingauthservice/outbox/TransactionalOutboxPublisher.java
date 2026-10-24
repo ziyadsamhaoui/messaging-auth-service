@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import com.ziyadsamhaoui.messagingauthservice.observability.TraceContextCarrier;
 import com.ziyadsamhaoui.messagingauthservice.web.CorrelationContext;
 import tools.jackson.databind.ObjectMapper;
 
@@ -31,6 +32,7 @@ public class TransactionalOutboxPublisher implements OutboxPublisher {
                 .eventVersion(EventEnvelope.VERSION_1)
                 .payload(objectMapper.writeValueAsString(payload))
                 .correlationId(CorrelationContext.current())
+                .traceParent(TraceContextCarrier.currentTraceParent())
                 .build());
     }
 

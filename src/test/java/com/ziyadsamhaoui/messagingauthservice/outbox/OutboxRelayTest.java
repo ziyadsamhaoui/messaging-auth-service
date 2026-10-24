@@ -1,5 +1,6 @@
 package com.ziyadsamhaoui.messagingauthservice.outbox;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -62,10 +63,12 @@ class OutboxRelayTest {
         OutboxEvent bad = event("bad", 0);
         OutboxEvent good = event("good", 0);
         when(repository.lockPendingBatch(50)).thenReturn(List.of(bad, good));
-        when(kafkaTemplate.send(eq(TOPIC), eq("bad"), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
-        when(kafkaTemplate.send(eq(TOPIC), eq("good"), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(null));
+        when(kafkaTemplate.send(any(ProducerRecord.class))).thenAnswer(invocation -> {
+            ProducerRecord<String, String> record = invocation.getArgument(0);
+            return "bad".equals(record.key())
+                    ? CompletableFuture.failedFuture(new RuntimeException("kafka down"))
+                    : CompletableFuture.completedFuture(null);
+        });
 
         relay.publishPending();
 
@@ -78,7 +81,7 @@ class OutboxRelayTest {
     void fifthConsecutiveFailureMovesToDeadLetter() {
         OutboxEvent poison = event("poison", 4);
         when(repository.lockPendingBatch(50)).thenReturn(List.of(poison));
-        when(kafkaTemplate.send(eq(TOPIC), eq("poison"), anyString()))
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
 
         relay.publishPending();
@@ -92,7 +95,7 @@ class OutboxRelayTest {
     void failureBelowTheThresholdStaysPending() {
         OutboxEvent poison = event("poison", 3);
         when(repository.lockPendingBatch(50)).thenReturn(List.of(poison));
-        when(kafkaTemplate.send(eq(TOPIC), eq("poison"), anyString()))
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
 
         relay.publishPending();
@@ -105,7 +108,7 @@ class OutboxRelayTest {
     void failureErrorIsTruncatedTo1000Characters() {
         OutboxEvent poison = event("poison", 0);
         when(repository.lockPendingBatch(50)).thenReturn(List.of(poison));
-        when(kafkaTemplate.send(eq(TOPIC), eq("poison"), anyString()))
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("x".repeat(5000))));
 
         relay.publishPending();
@@ -120,7 +123,7 @@ class OutboxRelayTest {
     void backoffGrowsWithTheAttemptCount() {
         OutboxEvent poison = event("poison", 2);
         when(repository.lockPendingBatch(50)).thenReturn(List.of(poison));
-        when(kafkaTemplate.send(eq(TOPIC), eq("poison"), anyString()))
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("kafka down")));
 
         Instant lowerBound = Instant.now().plusSeconds(7);
@@ -139,8 +142,48 @@ class OutboxRelayTest {
 
         relay.publishPending();
 
-        verify(kafkaTemplate, never()).send(anyString(), anyString(), anyString());
+        verify(kafkaTemplate, never()).send(any(ProducerRecord.class));
         verify(repository, never()).markProcessed(any());
         verify(repository, never()).recordFailure(any(), anyInt(), any(), any(), any());
+    }
+
+    @Test
+    void storedTraceParentIsInjectedIntoTheKafkaRecord() {
+        String traceParent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+        OutboxEvent event = event("credential-1", 0);
+        event.setTraceParent(traceParent);
+        when(repository.lockPendingBatch(50)).thenReturn(List.of(event));
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        relay.publishPending();
+
+        ArgumentCaptor<ProducerRecord<String, String>> record = recordCaptor();
+        verify(kafkaTemplate).send(record.capture());
+        assertThat(record.getValue().topic()).isEqualTo(TOPIC);
+        assertThat(record.getValue().headers().lastHeader("traceparent")).isNotNull();
+        assertThat(new String(record.getValue().headers().lastHeader("traceparent").value()))
+                .isEqualTo(traceParent);
+        verify(repository).markProcessed(event.getId());
+    }
+
+    @Test
+    void rowsWithoutTraceContextPublishNoTraceparentHeader() {
+        OutboxEvent event = event("credential-2", 0);
+        when(repository.lockPendingBatch(50)).thenReturn(List.of(event));
+        when(kafkaTemplate.send(any(ProducerRecord.class)))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        relay.publishPending();
+
+        ArgumentCaptor<ProducerRecord<String, String>> record = recordCaptor();
+        verify(kafkaTemplate).send(record.capture());
+        assertThat(record.getValue().headers().lastHeader("traceparent")).isNull();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ArgumentCaptor<ProducerRecord<String, String>> recordCaptor() {
+        return (ArgumentCaptor<ProducerRecord<String, String>>) (ArgumentCaptor<?>) ArgumentCaptor
+                .forClass(ProducerRecord.class);
     }
 }

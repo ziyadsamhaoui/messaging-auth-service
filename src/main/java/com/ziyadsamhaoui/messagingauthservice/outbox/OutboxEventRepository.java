@@ -11,6 +11,16 @@ import java.util.UUID;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
 
+    @Query(value = "select count(*) from outbox_events where published_at is null", nativeQuery = true)
+    long countUnpublished();
+
+    @Query(value = """
+            select coalesce(cast(max(extract(epoch from (CURRENT_TIMESTAMP - created_at))) as double precision), 0)
+            from outbox_events
+            where published_at is null
+            """, nativeQuery = true)
+    double oldestUnpublishedAgeSeconds();
+
     @Query(value = """
             select * from outbox_events
             where status = 'PENDING'

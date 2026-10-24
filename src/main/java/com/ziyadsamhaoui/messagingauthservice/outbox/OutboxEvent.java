@@ -51,6 +51,13 @@ public class OutboxEvent {
     @Column(name = "correlation_id", length = 100)
     private String correlationId;
 
+    /**
+     * W3C {@code traceparent} of the span that wrote this row, replayed by the relay so the
+     * Kafka record continues the originating trace. Null for rows written without a span.
+     */
+    @Column(name = "trace_parent", length = 64)
+    private String traceParent;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
