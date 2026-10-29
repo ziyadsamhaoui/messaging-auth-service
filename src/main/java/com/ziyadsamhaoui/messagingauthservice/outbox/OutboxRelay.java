@@ -68,8 +68,6 @@ public class OutboxRelay {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, event.getAggregateId(),
                 objectMapper.writeValueAsString(toEnvelope(event)));
 
-        // The stored traceparent is written explicitly so the header is present even when the
-        // agent is not attached (tests, or a build without instrumentation).
         if (event.getTraceParent() != null) {
             record.headers().add(TraceContextCarrier.TRACEPARENT,
                     event.getTraceParent().getBytes(StandardCharsets.UTF_8));
@@ -77,14 +75,10 @@ public class OutboxRelay {
 
         Context originating = TraceContextCarrier.extract(event.getTraceParent());
         if (originating == null) {
-            // No context to restore (scheduled origin, or a row written before this feature):
-            // publish as-is rather than inventing a header that would not match any trace.
             kafkaTemplate.send(record).get(10, TimeUnit.SECONDS);
             return;
         }
 
-        // Re-activating the originating context makes the agent's producer span a child of the
-        // span that wrote the outbox row, so its own traceparent injection keeps the trace.
         try (Scope scope = originating.makeCurrent()) {
             kafkaTemplate.send(record).get(10, TimeUnit.SECONDS);
         }

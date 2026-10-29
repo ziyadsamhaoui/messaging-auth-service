@@ -1,4 +1,3 @@
-# Keep build output, local secrets and IDE noise out of the build context.
 target/
 logs/
 .git/

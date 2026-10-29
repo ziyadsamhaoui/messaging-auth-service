@@ -25,9 +25,6 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Actuator lives on its own, unpublished management port; permitting it
-                        // here is what lets Prometheus scrape and the health probe run without a
-                        // token. No application route changes access.
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/prometheus",
                                 "/actuator/info")
                         .permitAll()

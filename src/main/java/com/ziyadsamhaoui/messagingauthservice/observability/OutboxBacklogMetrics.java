@@ -9,14 +9,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Exposes the state of the outbox as gauges.
- *
- * <p>The values are refreshed on a schedule instead of being queried from the gauge callback:
- * a gauge is evaluated while Prometheus scrapes, and a database round trip there would fail the
- * whole scrape whenever PostgreSQL is slow. The trade-off is bounded staleness, one refresh
- * interval, which is documented in the service README and the observability runbook.
- */
 @Component
 @Slf4j
 public class OutboxBacklogMetrics {
@@ -44,8 +36,6 @@ public class OutboxBacklogMetrics {
             unpublished.set(outboxEventRepository.countUnpublished());
             oldestAgeSeconds.set(Math.round(outboxEventRepository.oldestUnpublishedAgeSeconds()));
         } catch (RuntimeException ex) {
-            // Keep the last known values: a database hiccup must not hide the metric or, worse,
-            // fail the whole metrics scrape.
             log.warn("could not refresh outbox backlog metrics: {}", ex.getMessage());
         }
     }

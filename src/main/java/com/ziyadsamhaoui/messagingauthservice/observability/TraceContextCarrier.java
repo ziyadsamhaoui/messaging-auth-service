@@ -10,18 +10,6 @@ import io.opentelemetry.context.propagation.TextMapSetter;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Captures and restores the W3C trace context that has to survive the outbox.
- *
- * <p>The outbox deliberately defers publication to a scheduled relay, so the span that was
- * active when the row was written is long gone by the time the record reaches Kafka. Storing
- * the {@code traceparent} next to the event and re-activating it inside the relay keeps the
- * consumer's work on the original trace instead of starting a new, unrelated one.
- *
- * <p>Only the OpenTelemetry API is used: with the Java agent attached, {@link Span#current()}
- * and {@link Context#current()} resolve to the agent's spans, and without it they return the
- * API's no-op values, which makes every method here degrade to "no trace context".
- */
 public final class TraceContextCarrier {
 
     public static final String TRACEPARENT = "traceparent";
@@ -45,10 +33,6 @@ public final class TraceContextCarrier {
     private TraceContextCarrier() {
     }
 
-    /**
-     * The {@code traceparent} of the span that is current on this thread, or {@code null} when
-     * there is no valid span (a scheduled job with no inbound request, for example).
-     */
     public static String currentTraceParent() {
         return traceParent(Context.current());
     }
@@ -62,10 +46,6 @@ public final class TraceContextCarrier {
         return carrier.get(TRACEPARENT);
     }
 
-    /**
-     * Rebuilds a context from a stored {@code traceparent}. Returns {@code null} when the value
-     * is missing or malformed, so callers can publish without fabricating a header.
-     */
     public static Context extract(String traceParent) {
         if (traceParent == null || traceParent.isBlank()) {
             return null;

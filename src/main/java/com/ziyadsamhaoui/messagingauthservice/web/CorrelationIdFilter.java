@@ -36,12 +36,6 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     * An explicit header wins (the gateway forwards the trace id it adopted), otherwise the
-     * active trace id is used so support can paste one value into Jaeger and Loki. A random
-     * identifier is only generated when there is no trace at all, for example when the agent
-     * is not attached during a local run.
-     */
     private static String resolve(String supplied) {
         if (supplied != null && !supplied.isBlank()) {
             return supplied;

@@ -30,7 +30,6 @@ class TraceContextCarrierTest {
     @Test
     void noActiveSpanMeansNoTraceParent() {
         assertThat(TraceContextCarrier.traceParent(Context.root())).isNull();
-        // No agent is attached in a unit test, so this is the documented fallback branch.
         assertThat(TraceContextCarrier.currentTraceParent()).isNull();
     }
 
